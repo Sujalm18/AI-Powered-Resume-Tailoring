@@ -297,25 +297,22 @@ def call_claude(system: str, user: str, api_key: str) -> str:
     return text.strip()
 
 
-def extract_text_from_pdf(pdf_bytes: bytes, api_key: str) -> str:
-    """Use Claude to extract text from PDF bytes."""
-    client = anthropic.Anthropic(api_key=api_key)
-    b64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=4000,
-        messages=[{
-            "role": "user",
-            "content": [
-                {
-                    "type": "document",
-                    "source": {"type": "base64", "media_type": "application/pdf", "data": b64}
-                },
-                {"type": "text", "text": "Extract all text from this resume. Return only raw text preserving structure. No commentary."}
-            ]
-        }]
-    )
-    return message.content[0].text if message.content else ""
+def extract_text_from_pdf(pdf_bytes: bytes, api_key: str = None) -> str:
+    """Extract text from PDF using pypdf (local, no API cost)."""
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(BytesIO(pdf_bytes))
+        pages = []
+        for page in reader.pages:
+            text = page.extract_text()
+            if text:
+                pages.append(text.strip())
+        extracted = "\n\n".join(pages)
+        if extracted.strip():
+            return extracted
+        return ""
+    except Exception as e:
+        raise Exception(f"Could not read PDF: {str(e)}. Please paste your resume text manually instead.")
 
 
 def search_apollo(api_key: str, company: str, location: str = "") -> list:
